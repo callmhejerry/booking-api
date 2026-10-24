@@ -6,6 +6,7 @@ import (
 
 	"github.com/callmhejerry/booking-api/internal/util"
 	"github.com/jackc/pgx"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 var (
@@ -23,7 +24,7 @@ func mapSqlErrToAppError(err error) *util.AppError {
 		return ErrSlotNotFound
 	}
 
-	if pgErr, ok := errors.AsType[pgx.PgError](err); ok {
+	if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok {
 		switch pgErr.Code {
 		case util.SQL_UNIQUE_VIOLATION:
 			return ErrSlotAlreadyExist

@@ -21,8 +21,8 @@ func NewBookingController(bookingService *BookingService, router *gin.Engine) *B
 
 	router.Handle("POST", "/bookings", middleware.RateLimitingMiddleware(c.CreateBooking, 2, 5))
 	router.Handle("GET", "/bookings", c.ListUserBookings)
-	router.Handle("GET", "/booking/{id}", c.GetBookingByID)
-	router.Handle("DELETE", "/booking/{id}", c.CancelBooking)
+	router.Handle("GET", "/bookings/:id", c.GetBookingByID)
+	router.Handle("DELETE", "/bookings/:id", c.CancelBooking)
 
 	return c
 }
@@ -87,10 +87,10 @@ func (c *BookingController) CancelBooking(ctx *gin.Context) {
 		return
 	}
 
-	if booking, err := c.bookingService.CancelBooking(ctx, bookingId); err != nil {
-		util.RespondWithError(ctx, err.HttpStatus, err.Message)
+	booking, aerr := c.bookingService.CancelBooking(ctx, bookingId)
+	if aerr != nil {
+		util.RespondWithError(ctx, aerr.HttpStatus, aerr.Message)
 		return
-	} else {
-		util.RespondWithSuccess(ctx, booking)
 	}
+	util.RespondWithSuccess(ctx, booking)
 }

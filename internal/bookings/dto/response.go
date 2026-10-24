@@ -2,7 +2,7 @@ package dto
 
 type PaginatedBookingResponse struct {
 	Bookings   []BookingResponseDto `json:"bookings"`
-	NextCursor *string              `json:"next_cursor"`
+	NextCursor *string              `json:"next_cursor,omitempty"`
 }
 
 type BookingResponseDto struct {

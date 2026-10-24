@@ -170,7 +170,7 @@ func (s *BookingService) GetBookingById(ctx *gin.Context, id uuid.UUID) (*dto.Bo
 func (s *BookingService) CancelBooking(ctx *gin.Context, id uuid.UUID) (*dto.BookingResponseDto, *util.AppError) {
 	cancelledBooking, err := s.repo.CancelBooking(ctx, id)
 	if err != nil {
-		slog.Error("Failed to cancel booking",
+		s.logger.Error("Failed to cancel booking",
 			"error", err.Error(),
 			"booking_id", id,
 		)

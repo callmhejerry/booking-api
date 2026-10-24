@@ -34,11 +34,15 @@ func (r *SlotRepositoryImpl) CreateSlot(
 	startTime, endTime time.Time,
 ) (*db.Slot, *util.AppError) {
 	slot, err := r.db.CreateSlot(ctx, db.CreateSlotParams{
+		SlotID:    slotID,
 		Provider:  provider,
 		StartTime: startTime,
 		EndTime:   endTime,
 	})
-	return &slot, mapSqlErrToAppError(err)
+	if err != nil {
+		return nil, mapSqlErrToAppError(err)
+	}
+	return &slot, nil
 }
 
 func (r *SlotRepositoryImpl) ListSlots(ctx context.Context) ([]db.Slot, error) {

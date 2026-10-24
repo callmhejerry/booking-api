@@ -57,7 +57,6 @@ func (s *SlotService) CreateSlot(ctx context.Context, request dto.CreateSlotRequ
 	)
 	if appErr != nil {
 		s.logger.Error(appErr.Error(),
-			slog.String("error", appErr.Err.Error()),
 			slog.String("start_time", request.StartTime),
 			slog.String("end_time", request.EndTime),
 			slog.String("provider", request.Provider),
@@ -91,8 +90,10 @@ func (s *SlotService) ResetSlot(
 		}
 	}
 
-	for i := range request.Slots {
-		slot, err := s.CreateSlot(ctx, request.Slots[i])
+	s.logger.Info("Deleted slots")
+
+	for _, request := range request.Slots {
+		slot, err := s.CreateSlot(ctx, request)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -100,9 +101,10 @@ func (s *SlotService) ResetSlot(
 		slots = append(slots, *slot)
 	}
 
-	if len(slots) == 0 {
+	if len(errs) != 0 {
 		return nil, errs[0]
 	}
+
 	return slots, nil
 }
 

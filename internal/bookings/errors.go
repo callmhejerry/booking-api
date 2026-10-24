@@ -6,6 +6,7 @@ import (
 	"github.com/callmhejerry/booking-api/internal/slots"
 	"github.com/callmhejerry/booking-api/internal/util"
 	"github.com/jackc/pgx"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func mapSqlErrToAppError(err error) *util.AppError {
@@ -20,7 +21,7 @@ func mapSqlErrToAppError(err error) *util.AppError {
 		return aErr
 	}
 
-	if pgErr, ok := errors.AsType[pgx.PgError](err); ok {
+	if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok {
 		switch pgErr.Code {
 		case util.SQL_UNIQUE_VIOLATION:
 			switch pgErr.ConstraintName {
