@@ -11,12 +11,24 @@ services:
         value: 1.27.2
       - key: MODE
         value: release
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://booking-web.onrender.com
       - key: API_KEY
         generateValue: true
       - key: DATABASE_URL
         fromDatabase:
           name: booking-api-db
           property: connectionString
+
+  - type: web
+    name: booking-web
+    runtime: static
+    rootDir: booking_web
+    buildCommand: git clone --depth 1 --branch 3.47.7 https://github.com/flutter/flutter.git "$HOME/flutter-sdk" && "$HOME/flutter-sdk/bin/flutter" build web --release
+    staticPublishPath: build/web
+    envVars:
+      - key: SKIP_INSTALL_DEPS
+        value: true
 
 databases:
   - name: booking-api-db

@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"strings"
 )
 
 type dbConfig struct {
@@ -49,9 +50,10 @@ func (dbc *dbConfig) MigrationDSN() string {
 }
 
 type appConfig struct {
-	Port   string
-	Mode   string
-	ApiKey string
+	Port               string
+	Mode               string
+	ApiKey             string
+	CORSAllowedOrigins []string
 }
 
 type Config struct {
@@ -71,9 +73,13 @@ func LoadConfig() (*Config, error) {
 	}
 
 	appConfig := appConfig{
-		Port:   os.Getenv("PORT"),
-		Mode:   os.Getenv("MODE"),
-		ApiKey: os.Getenv("API_KEY"),
+		Port:               os.Getenv("PORT"),
+		Mode:               os.Getenv("MODE"),
+		ApiKey:             os.Getenv("API_KEY"),
+		CORSAllowedOrigins: parseAllowedOrigins(os.Getenv("CORS_ALLOWED_ORIGINS")),
+	}
+	if len(appConfig.CORSAllowedOrigins) == 0 {
+		appConfig.CORSAllowedOrigins = []string{"http://localhost:5000"}
 	}
 	if appConfig.Mode == "release" && dbConfig.SSLMode == "" {
 		dbConfig.SSLMode = "require"
@@ -87,6 +93,16 @@ func LoadConfig() (*Config, error) {
 		return nil, err
 	}
 	return cfg, nil
+}
+
+func parseAllowedOrigins(value string) []string {
+	var origins []string
+	for _, origin := range strings.Split(value, ",") {
+		if origin = strings.TrimSpace(origin); origin != "" {
+			origins = append(origins, origin)
+		}
+	}
+	return origins
 }
 
 func (cfg *Config) validate() error {

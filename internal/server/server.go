@@ -48,6 +48,7 @@ func (s *Server) SetupRoutes() *gin.Engine {
 	router := gin.Default()
 
 	router.Use(gin.Recovery())
+	router.Use(middleware.CORSMiddleware(s.config.AppCongfig.CORSAllowedOrigins))
 	router.Use(middleware.AuthMiddleware(s.config.AppCongfig.ApiKey))
 
 	slots.NewSlotController(s.slotService, router)
