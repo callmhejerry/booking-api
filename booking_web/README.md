@@ -25,7 +25,8 @@ The API must allow the web app's origin in `CORS_ALLOWED_ORIGINS`. The default i
 
 The repository's root `render.yaml` defines a free Render Static Site named
 `booking-web`. Render installs the pinned Flutter SDK, builds this folder, and
-publishes `build/web`. Create or update the Render Blueprint from the repository
+publishes `build/web`. The build reuses the SDK directory on subsequent attempts.
+Create or update the Render Blueprint from the repository
 to deploy both the API and web app. The API CORS setting allows
 `https://booking-web.onrender.com`; if Render assigns a different URL, update
 the API service's `CORS_ALLOWED_ORIGINS` to match the exact frontend origin.
