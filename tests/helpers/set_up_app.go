@@ -44,7 +44,7 @@ func SetupApp() (*TestApp, func()) {
 		os.Exit(1)
 	}
 
-	config := config.LoadConfig()
+	config, _ := config.LoadConfig()
 
 	pool, err := db.NewDatabaseConnection(context.Background(), config.DBConfig.DSN())
 	if err != nil {

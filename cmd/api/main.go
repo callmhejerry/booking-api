@@ -26,7 +26,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	config := config.LoadConfig()
+	config, err := config.LoadConfig()
+	if err != nil {
+		logger.Error(err.Error())
+		os.Exit(1)
+	}
 
 	pool, err := db.NewDatabaseConnection(context.Background(), config.DBConfig.DSN())
 	if err != nil {

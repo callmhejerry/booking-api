@@ -29,7 +29,7 @@ type Config struct {
 	DBConfig   dbConfig
 }
 
-func LoadConfig() *Config {
+func LoadConfig() (*Config, error) {
 	dbConfig := dbConfig{
 		Port:     os.Getenv("POSTGRES_PORT"),
 		Name:     os.Getenv("POSTGRES_DB"),
@@ -45,8 +45,30 @@ func LoadConfig() *Config {
 		ApiKey: os.Getenv("API_KEY"),
 	}
 
-	return &Config{
+	cfg := &Config{
 		DBConfig:   dbConfig,
 		AppCongfig: appConfig,
 	}
+	if err := cfg.validate(); err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+func (cfg *Config) validate() error {
+	if cfg.AppCongfig.ApiKey == "" {
+		return fmt.Errorf("Invalid api key")
+	}
+	if cfg.AppCongfig.Port == "" {
+		return fmt.Errorf("invalid app port")
+	}
+	if cfg.DBConfig.Password == "" || cfg.DBConfig.Name == "" || cfg.DBConfig.Username == "" {
+		return fmt.Errorf("Invalid database password")
+	}
+
+	if cfg.AppCongfig.Mode == "prod" && cfg.DBConfig.SSLMode == "disabled" {
+		return fmt.Errorf("Cannot disable database ssl mode for production")
+	}
+
+	return nil
 }
