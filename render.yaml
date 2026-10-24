@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: booking-api
+    runtime: go
+    plan: free
+    region: oregon
+    buildCommand: mkdir -p bin && go build -o bin/booking-api ./cmd/api
+    startCommand: ./bin/booking-api
+    envVars:
+      - key: GO_VERSION
+        value: 1.27.2
+      - key: MODE
+        value: release
+      - key: API_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: booking-api-db
+          property: connectionString
+
+databases:
+  - name: booking-api-db
+    databaseName: booking_api
+    user: booking_api
+    plan: free
+    region: oregon

@@ -4,9 +4,9 @@ services:
     ports:
       - "7001:5432"
     environment:
-      - POSTGRES_USER=jerressy
-      - POSTGRES_PASSWORD=random_booking_api_password
-      - POSTGRES_DB=booking_api
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
 

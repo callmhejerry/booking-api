@@ -2,9 +2,14 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/golang-migrate/migrate/v4"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
 func NewDatabaseConnection(ctx context.Context, dbURL string) (*pgxpool.Pool, error) {
@@ -25,6 +30,22 @@ func NewDatabaseConnection(ctx context.Context, dbURL string) (*pgxpool.Pool, er
 	return pool, nil
 }
 
+func RunMigrations(sourceURL, databaseURL string) (err error) {
+	migrator, err := migrate.New(sourceURL, databaseURL)
+	if err != nil {
+		return fmt.Errorf("create database migrator: %w", err)
+	}
+	defer func() {
+		sourceErr, databaseErr := migrator.Close()
+		err = errors.Join(err, sourceErr, databaseErr)
+	}()
+
+	if migrationErr := migrator.Up(); migrationErr != nil && !errors.Is(migrationErr, migrate.ErrNoChange) {
+		return fmt.Errorf("apply database migrations: %w", migrationErr)
+	}
+	return nil
+}
+
 func WithTx(ctx context.Context, dbConn *pgxpool.Pool, txnFunc func(qtx *Queries) error) error {
 	txn, err := dbConn.Begin(ctx)
 
@@ -34,12 +55,11 @@ func WithTx(ctx context.Context, dbConn *pgxpool.Pool, txnFunc func(qtx *Queries
 
 	defer txn.Rollback(ctx)
 
-	qtx := New(dbConn)
+	qtx := New(dbConn).WithTx(txn)
 
 	err = txnFunc(qtx)
 	if err != nil {
 		return err
 	}
-	txn.Commit(ctx)
-	return nil
+	return txn.Commit(ctx)
 }

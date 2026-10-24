@@ -87,8 +87,6 @@ func (s *BookingService) CreateBooking(
 		s.logger.Error("Failed to create booking",
 			"error", err.Error(),
 			"slot_id", request.SlotID,
-			"name", request.Name,
-			"email", request.Email,
 		)
 		return nil, &util.AppError{
 			Message:    "Failed to create booking",

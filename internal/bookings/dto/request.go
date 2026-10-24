@@ -1,9 +1,9 @@
 package dto
 
 type CreateBookingRequest struct {
-	SlotID string `json:"id"`
-	Name   string `json:"name"`
-	Email  string `json:"email"`
+	SlotID string `json:"id" binding:"required"`
+	Name   string `json:"name" binding:"required"`
+	Email  string `json:"email" binding:"required,email"`
 }
 
 type BookingQuery struct {

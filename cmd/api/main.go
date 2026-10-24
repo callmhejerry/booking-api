@@ -19,9 +19,7 @@ import (
 
 func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-
-	err := godotenv.Load()
-	if err != nil {
+	if err := godotenv.Load(); err != nil && !errors.Is(err, os.ErrNotExist) {
 		logger.Error("Failed to load .env file", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
@@ -29,6 +27,11 @@ func main() {
 	config, err := config.LoadConfig()
 	if err != nil {
 		logger.Error(err.Error())
+		os.Exit(1)
+	}
+
+	if err := db.RunMigrations("file://sql/migrations", config.DBConfig.MigrationDSN()); err != nil {
+		logger.Error("Failed to apply database migrations", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 
@@ -45,8 +48,11 @@ func main() {
 	router := server.SetupRoutes()
 
 	httpServer := http.Server{
-		Handler: router,
-		Addr:    fmt.Sprintf(":%s", config.AppCongfig.Port),
+		Handler:           router,
+		Addr:              fmt.Sprintf(":%s", config.AppCongfig.Port),
+		ReadTimeout:       time.Second * 10,
+		WriteTimeout:      time.Second * 10,
+		ReadHeaderTimeout: time.Second * 5,
 	}
 
 	go func() {

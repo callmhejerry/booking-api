@@ -54,14 +54,14 @@ func (r *BookingRepositoryImpl) CreateBooking(
 	var bookingResult *db.Booking
 
 	err := db.WithTx(ctx, r.dbPool, func(qtx *db.Queries) error {
-		bookedSlot, err := r.db.BookSlot(ctx, slotId)
+		bookedSlot, err := qtx.BookSlot(ctx, slotId)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return slots.ErrSlotAlreadyBooked
 			}
 			return err
 		}
-		bookings, err := r.db.CreateBooking(ctx, db.CreateBookingParams{
+		bookings, err := qtx.CreateBooking(ctx, db.CreateBookingParams{
 			SlotID: bookedSlot.SlotID,
 			Name:   name,
 			Email:  email,

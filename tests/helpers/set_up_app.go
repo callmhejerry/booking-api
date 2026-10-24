@@ -10,7 +10,6 @@ import (
 	"github.com/callmhejerry/booking-api/internal/config"
 	"github.com/callmhejerry/booking-api/internal/db"
 	"github.com/callmhejerry/booking-api/internal/server"
-	"github.com/golang-migrate/migrate/v4"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 )
@@ -38,13 +37,16 @@ func NewTestApp(
 
 func SetupApp() (*TestApp, func()) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	err := godotenv.Load("../../.env.test")
-	if err != nil {
+	if err := godotenv.Load("../../.env.test"); err != nil {
 		logger.Error("Failed to load .env.test file", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 
-	config, _ := config.LoadConfig()
+	config, err := config.LoadConfig()
+	if err != nil {
+		logger.Error("Failed to load test configuration", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
 
 	pool, err := db.NewDatabaseConnection(context.Background(), config.DBConfig.DSN())
 	if err != nil {
@@ -54,25 +56,14 @@ func SetupApp() (*TestApp, func()) {
 
 	database := db.New(pool)
 
-	migrator, err := migrate.New(
-		"file://../../sql/migrations", fmt.Sprintf("pgx5://%s:%s@%s:%s/%s?sslmode=%s", config.DBConfig.Username, config.DBConfig.Password, config.DBConfig.Host, config.DBConfig.Port, config.DBConfig.Name, config.DBConfig.SSLMode),
-	)
-	if err != nil {
-		logger.Error("Failed to create migrator",
-			"error", err.Error(),
-		)
+	if err := db.RunMigrations("file://../../sql/migrations", config.DBConfig.MigrationDSN()); err != nil {
+		logger.Error("Failed to apply migrations", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 
-	if err := migrator.Up(); err != nil && err != migrate.ErrNoChange {
-		logger.Error("Failed to apply migration")
-		os.Exit(1)
-	}
+	apiServer := server.NewServer(config, database, logger, pool)
 
-	server := server.NewServer(config, database, logger, pool)
-
-	router := server.SetupRoutes()
-
+	router := apiServer.SetupRoutes()
 	ts := httptest.NewServer(router)
 
 	app := NewTestApp(ts.URL, database, config, pool)

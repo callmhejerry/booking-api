@@ -43,6 +43,8 @@ func (c *BookingCache) Get(
 	key string,
 	requestHash string,
 ) (*dto.BookingResponseDto, *util.AppError) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if cachedData, ok := c.cache[key]; ok {
 		// we have the data in cache
 		if requestHash != cachedData.requestHash {
