@@ -1,6 +1,8 @@
 # Booking Web
 
-A small Flutter web client for the booking API. It can search slots for a provider and create a booking.
+A small Flutter web client for the booking API. It can search slots, create
+bookings, list bookings by email, fetch a booking by ID, cancel a booking, and
+replace the slot schedule.
 
 The page also includes an administrative `POST /reset` panel. It accepts a
 `{"slots": [...]}` payload and requires confirmation because the API deletes

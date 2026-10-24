@@ -19,6 +19,11 @@ void main() {
     expect(find.text('Available slots'), findsOneWidget);
     expect(find.text('Your details'), findsOneWidget);
     expect(find.text('Confirm booking'), findsOneWidget);
+    expect(find.text('Bookings'), findsOneWidget);
+    expect(find.byKey(const Key('booking-email-search')), findsOneWidget);
+    expect(find.byKey(const Key('list-bookings')), findsOneWidget);
+    expect(find.byKey(const Key('booking-id-search')), findsOneWidget);
+    expect(find.byKey(const Key('find-booking-by-id')), findsOneWidget);
 
     expect(find.text('Administrative: replace all slots'), findsOneWidget);
     expect(find.byKey(const Key('reset-slots-json')), findsOneWidget);
@@ -32,6 +37,8 @@ void main() {
     await tester.pumpWidget(const BookingWebApp());
     await tester.enterText(find.byType(TextField).first, 'http://localhost');
     final resetButton = find.byKey(const Key('replace-all-slots'));
+    await tester.ensureVisible(resetButton);
+    await tester.pumpAndSettle();
     await tester.tap(resetButton);
     await tester.pumpAndSettle();
 

@@ -61,6 +61,8 @@ class _BookingPageState extends State<BookingPage> {
   final _providerController = TextEditingController();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _bookingEmailController = TextEditingController();
+  final _bookingIdController = TextEditingController();
   final _resetSlotsController = TextEditingController(
     text: '''
 {
@@ -77,8 +79,13 @@ class _BookingPageState extends State<BookingPage> {
   final _client = http.Client();
 
   List<Slot> _slots = [];
+  List<Booking> _bookings = [];
   Slot? _selectedSlot;
+  String? _nextBookingCursor;
   bool _loadingSlots = false;
+  bool _loadingBookings = false;
+  bool _loadingBookingById = false;
+  bool _cancellingBooking = false;
   bool _submitting = false;
   bool _resettingSlots = false;
   String? _error;
@@ -91,6 +98,8 @@ class _BookingPageState extends State<BookingPage> {
     _providerController.dispose();
     _nameController.dispose();
     _emailController.dispose();
+    _bookingEmailController.dispose();
+    _bookingIdController.dispose();
     _resetSlotsController.dispose();
     _client.close();
     super.dispose();
@@ -302,10 +311,166 @@ class _BookingPageState extends State<BookingPage> {
     }
   }
 
+  Future<void> _loadBookings({String? cursor}) async {
+    final baseUrl = _baseUrl;
+    final email = _bookingEmailController.text.trim();
+    if (baseUrl.isEmpty || !_isEmail(email)) {
+      setState(() => _error = 'Enter the API URL and a valid booking email.');
+      return;
+    }
+
+    setState(() {
+      _loadingBookings = true;
+      _error = null;
+      _message = null;
+    });
+
+    try {
+      final query = <String, String>{'email': email, 'limit': '10'};
+      if (cursor != null) query['cursor'] = cursor;
+      final response = await _client
+          .get(
+            Uri.parse('$baseUrl/bookings').replace(queryParameters: query),
+            headers: _headers,
+          )
+          .timeout(const Duration(seconds: 15));
+      final body = _decodeBody(response);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw ApiException(_errorFromBody(body, response.statusCode));
+      }
+
+      final data = body as Map<String, dynamic>;
+      final bookings = (data['bookings'] as List<dynamic>)
+          .map((item) => Booking.fromJson(item as Map<String, dynamic>))
+          .toList();
+      setState(() {
+        if (cursor == null) {
+          _bookings = bookings;
+        } else {
+          _bookings = [..._bookings, ...bookings];
+        }
+        _nextBookingCursor = data['next_cursor'] as String?;
+        _message = _bookings.isEmpty ? 'No bookings found for $email.' : null;
+      });
+    } on FormatException {
+      setState(() => _error = 'The booking list returned invalid JSON.');
+    } on ApiException catch (error) {
+      setState(() => _error = error.message);
+    } catch (error) {
+      setState(() => _error = 'Could not load bookings: $error');
+    } finally {
+      if (mounted) setState(() => _loadingBookings = false);
+    }
+  }
+
+  Future<void> _loadBookingById() async {
+    final baseUrl = _baseUrl;
+    final id = _bookingIdController.text.trim();
+    if (baseUrl.isEmpty || id.isEmpty) {
+      setState(() => _error = 'Enter the API URL and a booking ID.');
+      return;
+    }
+
+    setState(() {
+      _loadingBookingById = true;
+      _error = null;
+      _message = null;
+    });
+
+    try {
+      final response = await _client
+          .get(
+            Uri.parse('$baseUrl/bookings/${Uri.encodeComponent(id)}'),
+            headers: _headers,
+          )
+          .timeout(const Duration(seconds: 15));
+      final body = _decodeBody(response);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw ApiException(_errorFromBody(body, response.statusCode));
+      }
+
+      final booking = Booking.fromJson(body as Map<String, dynamic>);
+      setState(() {
+        _bookingIdController.text = booking.id;
+        _bookings = [booking];
+        _nextBookingCursor = null;
+      });
+    } on FormatException {
+      setState(() => _error = 'The booking response was invalid.');
+    } on ApiException catch (error) {
+      setState(() => _error = error.message);
+    } catch (error) {
+      setState(() => _error = 'Could not load booking: $error');
+    } finally {
+      if (mounted) setState(() => _loadingBookingById = false);
+    }
+  }
+
+  Future<void> _cancelBooking(Booking booking) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Cancel this booking?'),
+        content: Text(
+          'Cancel booking ${booking.id} for ${booking.name}? '
+          'The time slot will become available again.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Keep booking'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Cancel booking'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() {
+      _cancellingBooking = true;
+      _error = null;
+      _message = null;
+    });
+    try {
+      final response = await _client
+          .delete(
+            Uri.parse('$_baseUrl/bookings/${Uri.encodeComponent(booking.id)}'),
+            headers: _headers,
+          )
+          .timeout(const Duration(seconds: 15));
+      final body = _decodeBody(response);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw ApiException(_errorFromBody(body, response.statusCode));
+      }
+
+      final updatedBooking = Booking.fromJson(body as Map<String, dynamic>);
+      setState(() {
+        _bookings = _bookings
+            .map((item) => item.id == updatedBooking.id ? updatedBooking : item)
+            .toList();
+        _message = 'Booking ${updatedBooking.id} was cancelled.';
+      });
+    } on FormatException {
+      setState(() => _error = 'The cancellation response was invalid.');
+    } on ApiException catch (error) {
+      setState(() => _error = error.message);
+    } catch (error) {
+      setState(() => _error = 'Could not cancel booking: $error');
+    } finally {
+      if (mounted) setState(() => _cancellingBooking = false);
+    }
+  }
+
   Map<String, String> get _headers => {
     if (_apiKeyController.text.trim().isNotEmpty)
       'X-API-Key': _apiKeyController.text.trim(),
   };
+
+  String get _baseUrl =>
+      _apiUrlController.text.trim().replaceFirst(RegExp(r'/+$'), '');
 
   bool _isEmail(String value) =>
       RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value);
@@ -376,6 +541,8 @@ class _BookingPageState extends State<BookingPage> {
                   if (_error != null || _message != null)
                     const SizedBox(height: 16),
                   content,
+                  const SizedBox(height: 22),
+                  _buildBookingsPanel(),
                   const SizedBox(height: 22),
                   _buildResetPanel(),
                 ],
@@ -610,7 +777,137 @@ class _BookingPageState extends State<BookingPage> {
     );
   }
 
+  Widget _buildBookingsPanel() {
+    return _Panel(
+      title: 'Bookings',
+      subtitle: 'List bookings by email, look up a booking by ID, or cancel a booking.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final vertical = constraints.maxWidth < 620;
+              final emailField = _textField(
+                key: const Key('booking-email-search'),
+                controller: _bookingEmailController,
+                label: 'Booking email',
+                hint: 'you@example.com',
+                keyboardType: TextInputType.emailAddress,
+                onSubmitted: (_) => _loadBookings(),
+              );
+              final listButton = FilledButton.tonalIcon(
+                key: const Key('list-bookings'),
+                onPressed: _loadingBookings ? null : () => _loadBookings(),
+                icon: _loadingBookings
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.list_alt),
+                label: const Text('List bookings'),
+              );
+              final idField = _textField(
+                key: const Key('booking-id-search'),
+                controller: _bookingIdController,
+                label: 'Booking ID',
+                hint: 'UUID',
+                onSubmitted: (_) => _loadBookingById(),
+              );
+              final lookupButton = OutlinedButton.icon(
+                key: const Key('find-booking-by-id'),
+                onPressed: _loadingBookingById ? null : _loadBookingById,
+                icon: _loadingBookingById
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.search),
+                label: const Text('Find by ID'),
+              );
+
+              if (vertical) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    emailField,
+                    const SizedBox(height: 10),
+                    Align(alignment: Alignment.centerRight, child: listButton),
+                    const SizedBox(height: 16),
+                    idField,
+                    const SizedBox(height: 10),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: lookupButton,
+                    ),
+                  ],
+                );
+              }
+              return Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: emailField),
+                      const SizedBox(width: 12),
+                      listButton,
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(child: idField),
+                      const SizedBox(width: 12),
+                      lookupButton,
+                    ],
+                  ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          if (_bookings.isEmpty)
+            const _EmptyState(
+              icon: Icons.event_note_outlined,
+              text: 'Search by email or booking ID to see bookings.',
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _bookings.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 10),
+              itemBuilder: (context, index) {
+                final booking = _bookings[index];
+                return _BookingTile(
+                  booking: booking,
+                  cancelling: _cancellingBooking,
+                  onCancel: booking.status.toLowerCase() == 'cancelled'
+                      ? null
+                      : () => _cancelBooking(booking),
+                );
+              },
+            ),
+          if (_nextBookingCursor != null) ...[
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.center,
+              child: OutlinedButton.icon(
+                onPressed: _loadingBookings
+                    ? null
+                    : () => _loadBookings(cursor: _nextBookingCursor),
+                icon: const Icon(Icons.expand_more),
+                label: const Text('Load more'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _textField({
+    Key? key,
     required TextEditingController controller,
     required String label,
     required String hint,
@@ -620,6 +917,7 @@ class _BookingPageState extends State<BookingPage> {
     ValueChanged<String>? onSubmitted,
   }) {
     return TextField(
+      key: key,
       controller: controller,
       decoration: InputDecoration(labelText: label, hintText: hint),
       keyboardType: keyboardType,
@@ -702,9 +1000,107 @@ class Slot {
   );
 }
 
+class Booking {
+  const Booking({
+    required this.id,
+    required this.slotId,
+    required this.name,
+    required this.email,
+    required this.status,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String slotId;
+  final String name;
+  final String email;
+  final String status;
+  final String createdAt;
+
+  factory Booking.fromJson(Map<String, dynamic> json) => Booking(
+    id: json['id'] as String,
+    slotId: json['slot_id'] as String,
+    name: json['name'] as String,
+    email: json['email'] as String,
+    status: json['status'] as String,
+    createdAt: json['created_at'] as String,
+  );
+}
+
 class ApiException implements Exception {
   const ApiException(this.message);
   final String message;
+}
+
+class _BookingTile extends StatelessWidget {
+  const _BookingTile({
+    required this.booking,
+    required this.cancelling,
+    required this.onCancel,
+  });
+
+  final Booking booking;
+  final bool cancelling;
+  final VoidCallback? onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = booking.status.toLowerCase() == 'cancelled'
+        ? const Color(0xFF79847F)
+        : const Color(0xFF176B55);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFAFBF8),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE7ECE6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.event_note, color: Color(0xFF167D73)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  booking.name,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+              Text(
+                booking.status,
+                style: TextStyle(
+                  color: statusColor,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SelectableText('Booking ID: ${booking.id}'),
+          Text('Slot: ${booking.slotId}'),
+          Text(booking.email),
+          Text('Created: ${booking.createdAt}'),
+          if (onCancel != null) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: cancelling ? null : onCancel,
+                icon: const Icon(Icons.event_busy),
+                label: Text(cancelling ? 'Cancelling…' : 'Cancel booking'),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF9B2929),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
 
 class _Panel extends StatelessWidget {
