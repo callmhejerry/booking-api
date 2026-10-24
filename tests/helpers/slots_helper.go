@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -15,17 +16,21 @@ func SeedSlot(
 	t.Helper()
 
 	t.Cleanup(func() {
-		fmt.Printf("Cleaning up tests")
-		queries.CleanUpTables(t.Context())
+		fmt.Printf("Cleaning up tests\n")
+		if err := queries.CleanUpTables(context.Background()); err != nil {
+			fmt.Printf("Failed to clean up tables :%s\n", err.Error())
+		}
 	})
 
 	startTime := time.Now().Add(10 * time.Minute)
 	endTime := startTime.Add(30 * time.Minute)
 
-	return queries.CreateSlot(t.Context(), db.CreateSlotParams{
+	slot, err := queries.CreateSlot(t.Context(), db.CreateSlotParams{
 		SlotID:    "s1",
 		Provider:  "Dr Chinedu",
 		StartTime: startTime,
 		EndTime:   endTime,
 	})
+
+	return slot, err
 }

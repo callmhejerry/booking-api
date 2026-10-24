@@ -6,18 +6,20 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/callmhejerry/booking-api/internal/bookings/dto"
 	"github.com/callmhejerry/booking-api/tests/helpers"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_CreateBooking(t *testing.T) {
-	url := fmt.Sprintf("%s/bookings", TestServerURL)
+	url := fmt.Sprintf("%s/bookings", App.TestServerUrl)
 
-	slot, err := helpers.SeedSlot(t, &Queries)
+	slot, err := helpers.SeedSlot(t, App.Queries)
 	require.NoError(t, err)
 
 	payload := dto.CreateBookingRequest{
@@ -26,7 +28,10 @@ func Test_CreateBooking(t *testing.T) {
 		Email:  "kelechichineduben@gmail.com",
 	}
 	jsonBody, _ := json.Marshal(payload)
-	res, err := http.Post(url, "application/json", bytes.NewBuffer(jsonBody))
+	request, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonBody))
+	request.Header.Set("X-API-Key", App.Config.AppCongfig.ApiKey)
+
+	res, err := http.DefaultClient.Do(request)
 	require.NoError(t, err)
 
 	defer res.Body.Close()
@@ -43,8 +48,7 @@ func Test_CreateBooking(t *testing.T) {
 func Test_CreateBookingWithIdempotencySuccess(
 	t *testing.T,
 ) {
-
-	slot, err := helpers.SeedSlot(t, &Queries)
+	slot, err := helpers.SeedSlot(t, App.Queries)
 	require.NoError(t, err)
 
 	payload := dto.CreateBookingRequest{
@@ -76,18 +80,45 @@ func Test_CreateBookingWithIdempotencySuccess(
 	assert.Equal(t, actualResponse, actualResponse2)
 }
 
+func Test_CreateBookingRateLimit(t *testing.T) {
+	slot, err := helpers.SeedSlot(t, App.Queries)
+	require.NoError(t, err)
+
+	payload := dto.CreateBookingRequest{
+		SlotID: slot.SlotID,
+		Name:   "Kelechi",
+		Email:  "kelechichineduben@gmail.com",
+	}
+
+	header := make(map[string]string)
+	idempotencyKey := uuid.New()
+	header["Idempotency-Key"] = idempotencyKey.String()
+
+	fmt.Printf("Idempotency key is %s\n", idempotencyKey.String())
+
+	for range 5 {
+		createBooking(t, payload, header)
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	res := createBooking(t, payload, header)
+
+	assert.Equal(t, http.StatusTooManyRequests, res.StatusCode)
+}
+
 func createBooking(
 	t *testing.T,
 	payload dto.CreateBookingRequest,
 	headers map[string]string,
 ) *http.Response {
 	t.Helper()
-	url := fmt.Sprintf("%s/bookings", TestServerURL)
+	url := fmt.Sprintf("%s/bookings", App.TestServerUrl)
 	jsonBody, _ := json.Marshal(payload)
 
 	client := http.DefaultClient
 
 	request, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonBody))
+	request.Header.Set("X-API-Key", App.Config.AppCongfig.ApiKey)
 
 	for key, value := range headers {
 		request.Header.Add(key, value)

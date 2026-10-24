@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/callmhejerry/booking-api/internal/bookings/dto"
+	"github.com/callmhejerry/booking-api/internal/middleware"
 	"github.com/callmhejerry/booking-api/internal/util"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -18,7 +19,7 @@ func NewBookingController(bookingService *BookingService, router *gin.Engine) *B
 		bookingService: bookingService,
 	}
 
-	router.Handle("POST", "/bookings", c.CreateBooking)
+	router.Handle("POST", "/bookings", middleware.RateLimitingMiddleware(c.CreateBooking, 2, 5))
 	router.Handle("GET", "/bookings", c.ListUserBookings)
 	router.Handle("GET", "/booking/{id}", c.GetBookingByID)
 	router.Handle("DELETE", "/booking/{id}", c.CancelBooking)

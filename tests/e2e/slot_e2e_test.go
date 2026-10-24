@@ -24,7 +24,11 @@ func Test_CreateSlot(t *testing.T) {
 
 	jsonBody, _ := json.Marshal(payload)
 
-	response, err := http.Post(fmt.Sprintf("%s/slots", TestServerURL), "application/json", bytes.NewBuffer(jsonBody))
+	request, _ := http.NewRequest("POST", fmt.Sprintf("%s/slots", App.TestServerUrl), bytes.NewBuffer(jsonBody))
+	request.Header.Set("X-API-Key", App.Config.AppCongfig.ApiKey)
+	defer request.Body.Close()
+
+	response, err := http.DefaultClient.Do(request)
 
 	require.NoError(t, err)
 
@@ -34,14 +38,15 @@ func Test_CreateSlot(t *testing.T) {
 }
 
 func Test_GetSlotById(t *testing.T) {
-
-	endpoint, _ := url.Parse(fmt.Sprintf("%s/slots", TestServerURL))
+	endpoint, _ := url.Parse(fmt.Sprintf("%s/slots", App.TestServerUrl))
 	query := url.Values{}
 	query.Set("provider", "Dr Chinedu")
 
 	endpoint.RawQuery = query.Encode()
 
-	response, err := http.Get(endpoint.String())
+	request, _ := http.NewRequest("GET", endpoint.String(), nil)
+	request.Header.Set("X-API-Key", App.Config.AppCongfig.ApiKey)
+	response, err := http.DefaultClient.Do(request)
 	require.NoError(t, err)
 
 	defer response.Body.Close()

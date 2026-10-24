@@ -6,6 +6,7 @@ import (
 	"github.com/callmhejerry/booking-api/internal/bookings"
 	"github.com/callmhejerry/booking-api/internal/config"
 	"github.com/callmhejerry/booking-api/internal/db"
+	"github.com/callmhejerry/booking-api/internal/middleware"
 	"github.com/callmhejerry/booking-api/internal/slots"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -47,6 +48,7 @@ func (s *Server) SetupRoutes() *gin.Engine {
 	router := gin.Default()
 
 	router.Use(gin.Recovery())
+	router.Use(middleware.AuthMiddleware(s.config.AppCongfig.ApiKey))
 
 	slots.NewSlotController(s.slotService, router)
 	bookings.NewBookingController(s.bookingService, router)

@@ -19,8 +19,9 @@ func (dbc *dbConfig) DSN() string {
 }
 
 type appConfig struct {
-	Port string
-	Mode string
+	Port   string
+	Mode   string
+	ApiKey string
 }
 
 type Config struct {
@@ -39,7 +40,9 @@ func LoadConfig() *Config {
 	}
 
 	appConfig := appConfig{
-		Port: os.Getenv("PORT"),
+		Port:   os.Getenv("PORT"),
+		Mode:   os.Getenv("MODE"),
+		ApiKey: os.Getenv("API_KEY"),
 	}
 
 	return &Config{
