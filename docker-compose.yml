@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "7001:5432"
+    environment:
+      - POSTGRES_USER=jerressy
+      - POSTGRES_PASSWORD=random_booking_api_password
+      - POSTGRES_DB=booking_api
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
