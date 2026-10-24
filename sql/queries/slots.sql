@@ -24,7 +24,9 @@ RETURNING *;
 
 
 -- name: ResetSlots :exec
-DELETE FROM slots;
+TRUNCATE TABLE
+    slots
+RESTART IDENTITY CASCADE;
 
 -- name: GetProviderSlot :many
 SELECT * FROM slots

@@ -91,7 +91,7 @@ func (r *BookingRepositoryImpl) ListUserBookings(
 	userBookings, err := r.db.GetUserBooking(ctx, db.GetUserBookingParams{
 		Email:     email,
 		SlotID:    slotId,
-		CreatedAt: *createdAt,
+		CreatedAt: createdAt,
 		Limit:     int32(limit),
 	})
 	if err != nil {

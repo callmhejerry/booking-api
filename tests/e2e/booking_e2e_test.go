@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"testing"
 	"time"
 
@@ -19,7 +20,7 @@ import (
 func Test_CreateBooking(t *testing.T) {
 	url := fmt.Sprintf("%s/bookings", App.TestServerUrl)
 
-	slot, err := helpers.SeedSlot(t, App.Queries)
+	slot, err := helpers.SeedSlot(t, App.Queries, time.Now().Add(5*time.Minute), time.Now().Add(15*time.Minute))
 	require.NoError(t, err)
 
 	payload := dto.CreateBookingRequest{
@@ -48,7 +49,7 @@ func Test_CreateBooking(t *testing.T) {
 func Test_CreateBookingWithIdempotencySuccess(
 	t *testing.T,
 ) {
-	slot, err := helpers.SeedSlot(t, App.Queries)
+	slot, err := helpers.SeedSlot(t, App.Queries, time.Now().Add(5*time.Minute), time.Now().Add(time.Minute*15))
 	require.NoError(t, err)
 
 	payload := dto.CreateBookingRequest{
@@ -80,8 +81,28 @@ func Test_CreateBookingWithIdempotencySuccess(
 	assert.Equal(t, actualResponse, actualResponse2)
 }
 
+func Test_CreateBookingTimePassed(t *testing.T) {
+	slot, err := helpers.SeedSlot(t, App.Queries, time.Now(), time.Now().Add(time.Minute*15))
+	require.NoError(t, err)
+
+	payload := dto.CreateBookingRequest{
+		SlotID: slot.SlotID,
+		Name:   "Kelechi",
+		Email:  "kelechichineduben@gmail.com",
+	}
+
+	header := make(map[string]string)
+	idempotencyKey := uuid.New()
+	header["Idempotency-Key"] = idempotencyKey.String()
+
+	fmt.Printf("Idempotency key is %s\n", idempotencyKey.String())
+	res := createBooking(t, payload, header)
+
+	assert.Equal(t, http.StatusBadRequest, res.StatusCode)
+}
+
 func Test_CreateBookingRateLimit(t *testing.T) {
-	slot, err := helpers.SeedSlot(t, App.Queries)
+	slot, err := helpers.SeedSlot(t, App.Queries, time.Now().Add(5*time.Minute), time.Now().Add(time.Minute*15))
 	require.NoError(t, err)
 
 	payload := dto.CreateBookingRequest{
@@ -104,6 +125,28 @@ func Test_CreateBookingRateLimit(t *testing.T) {
 	res := createBooking(t, payload, header)
 
 	assert.Equal(t, http.StatusTooManyRequests, res.StatusCode)
+}
+
+func Test_GetProviderBookings(t *testing.T) {
+	url, err := url.Parse(fmt.Sprintf("%s/bookings", App.TestServerUrl))
+	require.NoError(t, err)
+	query := url.Query()
+	query.Set("email", "kelechichineduben@gmail.com")
+	url.RawQuery = query.Encode()
+
+	request, err := http.NewRequest("GET", url.String(), nil)
+	require.NoError(t, err)
+
+	request.Header.Set("X-API-Key", App.Config.AppCongfig.ApiKey)
+	response, err := http.DefaultClient.Do(request)
+	require.NoError(t, err)
+	defer response.Body.Close()
+
+	var actualResponse dto.PaginatedBookingResponse
+	err = json.NewDecoder(response.Body).Decode(&actualResponse)
+	require.NoError(t, err)
+
+	assert.Equal(t, http.StatusOK, response.StatusCode)
 }
 
 func createBooking(

@@ -152,7 +152,9 @@ func (q *Queries) ListSlots(ctx context.Context) ([]Slot, error) {
 }
 
 const resetSlots = `-- name: ResetSlots :exec
-DELETE FROM slots
+TRUNCATE TABLE
+    slots
+RESTART IDENTITY CASCADE
 `
 
 func (q *Queries) ResetSlots(ctx context.Context) error {

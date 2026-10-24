@@ -9,7 +9,7 @@ SELECT * FROM bookings
 WHERE 
     email = $1 AND (
         sqlc.narg('slot_id')::text IS NULL OR
-        (slot_id, created_at) > (sqlc.arg('slot_id'), sqlc.arg('created_at'))
+        (slot_id, created_at) > (sqlc.narg('slot_id'), sqlc.narg('created_at'))
     )
 ORDER BY created_at DESC
 LIMIT sqlc.arg('limit');

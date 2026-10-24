@@ -34,7 +34,7 @@ migrate-version:
 
 
 run:
-	go run ./cmd/api/main.go
+	go run -race ./cmd/api/main.go
 
 test:
 	go test -v -count=1 ./tests/e2e/...

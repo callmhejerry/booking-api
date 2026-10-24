@@ -23,7 +23,12 @@ func mapSqlErrToAppError(err error) *util.AppError {
 	if pgErr, ok := errors.AsType[pgx.PgError](err); ok {
 		switch pgErr.Code {
 		case util.SQL_UNIQUE_VIOLATION:
-			return slots.ErrSlotAlreadyExist
+			switch pgErr.ConstraintName {
+			case "unique_slot_id":
+				return slots.ErrSlotAlreadyExist
+			case "unique_bookings":
+				return slots.ErrSlotAlreadyBooked
+			}
 		}
 	}
 	return util.InternalServerError(err)

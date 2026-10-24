@@ -116,7 +116,7 @@ func (s *BookingService) ListUserBookings(ctx *gin.Context, query dto.BookingQue
 	}
 	bookings, err := s.repo.ListUserBookings(
 		ctx, query.Email,
-		slotId, createdAt, query.Limit,
+		slotId, createdAt, query.Limit+1,
 	)
 
 	if err != nil {
@@ -128,6 +128,14 @@ func (s *BookingService) ListUserBookings(ctx *gin.Context, query dto.BookingQue
 		}
 	}
 
+	// There are no bookings left
+	if len(bookings) <= int(query.Limit) {
+		return &dto.PaginatedBookingResponse{
+			Bookings:   convertToManyBookingResponse(bookings),
+			NextCursor: nil,
+		}, nil
+	}
+
 	lastBooking := bookings[len(bookings)-1]
 	lastBookingSlotId := lastBooking.SlotID
 	lastBookingCreatedAt := lastBooking.CreatedAt.Format(time.RFC3339)
@@ -135,7 +143,7 @@ func (s *BookingService) ListUserBookings(ctx *gin.Context, query dto.BookingQue
 	nextCursor := convertToBookingCursor(lastBookingSlotId, lastBookingCreatedAt)
 
 	return &dto.PaginatedBookingResponse{
-		Bookings:   convertToManyBookingResponse(bookings),
+		Bookings:   convertToManyBookingResponse(bookings[:len(bookings)-1]),
 		NextCursor: &nextCursor,
 	}, nil
 }

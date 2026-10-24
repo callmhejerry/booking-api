@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS bookings(
     status VARCHAR(100) NOT NULL DEFAULT 'confirmed',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-    CONSTRAINT bookings_unique_email UNIQUE(email)
+    CONSTRAINT unique_bookings UNIQUE(email, slot_id)
 );
 
 

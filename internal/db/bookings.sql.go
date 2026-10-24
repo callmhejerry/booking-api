@@ -103,7 +103,7 @@ LIMIT $4
 type GetUserBookingParams struct {
 	Email     string
 	SlotID    *string
-	CreatedAt string
+	CreatedAt *string
 	Limit     int32
 }
 

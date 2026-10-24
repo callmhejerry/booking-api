@@ -37,6 +37,45 @@ func Test_CreateSlot(t *testing.T) {
 	assert.Equal(t, response.StatusCode, http.StatusOK)
 }
 
+func Test_ResetSlot(t *testing.T) {
+	slots := [3]dto.CreateSlotRequest{
+		{
+			SlotID:    "s2",
+			Provider:  "Dr s2",
+			StartTime: time.Now().Add(3 * time.Minute).Format(time.RFC3339),
+			EndTime:   time.Now().Add((3 + 10) * time.Minute).Format(time.RFC3339),
+		},
+		{
+			SlotID:    "s3",
+			Provider:  "Dr s3",
+			StartTime: time.Now().Add(13 * time.Minute).Format(time.RFC3339),
+			EndTime:   time.Now().Add((13 + 10) * time.Minute).Format(time.RFC3339),
+		},
+		{
+			SlotID:    "s4",
+			Provider:  "Dr s4",
+			StartTime: time.Now().Add(23 * time.Minute).Format(time.RFC3339),
+			EndTime:   time.Now().Add((13 + 10) * time.Minute).Format(time.RFC3339),
+		},
+	}
+
+	payload := dto.ResetSlotRequest{
+		Slots: slots[:],
+	}
+	jsonBytes, _ := json.Marshal(payload)
+
+	request, _ := http.NewRequest("POST", fmt.Sprintf("%s/reset", App.TestServerUrl), bytes.NewBuffer(jsonBytes))
+	defer request.Body.Close()
+
+	request.Header.Set("X-API-Key", App.Config.AppCongfig.ApiKey)
+
+	response, err := http.DefaultClient.Do(request)
+	require.NoError(t, err)
+	defer response.Body.Close()
+
+	assert.Equal(t, http.StatusOK, response.StatusCode)
+}
+
 func Test_GetSlotById(t *testing.T) {
 	endpoint, _ := url.Parse(fmt.Sprintf("%s/slots", App.TestServerUrl))
 	query := url.Values{}
