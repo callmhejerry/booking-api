@@ -24,7 +24,7 @@ services:
     name: booking-web
     runtime: static
     rootDir: booking_web
-    buildCommand: if [ ! -x "$HOME/flutter-sdk/bin/flutter" ]; then git clone --depth 1 --branch 3.47.7 https://github.com/flutter/flutter.git "$HOME/flutter-sdk"; fi && "$HOME/flutter-sdk/bin/flutter" build web --release
+    buildCommand: if [ ! -x "$HOME/flutter-sdk/bin/flutter" ]; then rm -rf "$HOME/flutter-sdk" && git clone --depth 1 --branch 3.47.7 https://github.com/flutter/flutter.git "$HOME/flutter-sdk"; fi && "$HOME/flutter-sdk/bin/flutter" build web --release
     staticPublishPath: build/web
     envVars:
       - key: SKIP_INSTALL_DEPS
