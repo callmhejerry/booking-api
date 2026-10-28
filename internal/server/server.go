@@ -2,6 +2,7 @@ package server
 
 import (
 	"log/slog"
+	"net/http"
 
 	"github.com/callmhejerry/booking-api/internal/bookings"
 	"github.com/callmhejerry/booking-api/internal/config"
@@ -46,6 +47,9 @@ func NewServer(
 func (s *Server) SetupRoutes() *gin.Engine {
 	gin.SetMode(s.config.AppCongfig.Mode)
 	router := gin.Default()
+	router.GET("/health", func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
 
 	router.Use(gin.Recovery())
 	router.Use(middleware.CORSMiddleware(s.config.AppCongfig.CORSAllowedOrigins))

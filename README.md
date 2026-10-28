@@ -364,3 +364,24 @@ database. After deployment:
 Do not put the API key into the Flutter build or commit it to the repository.
 For more frontend-specific setup and deployment notes, see
 [`booking_web/README.md`](./booking_web/README.md).
+
+### Keep the free API service awake
+
+Render's free web service can spin down after 15 minutes without traffic. This
+repository includes a GitHub Actions workflow that requests the API's public
+`/health` endpoint every 10 minutes:
+
+1. In GitHub, open the repository's **Settings → Secrets and variables →
+   Actions → Variables** and add a repository variable named
+   `RENDER_API_URL`, with the API service's base URL (for example,
+   `https://booking-api.onrender.com`, without a trailing path).
+2. Ensure GitHub Actions is enabled and that this workflow is on the default
+   branch.
+3. Optionally run **Actions → Keep Render API awake → Run workflow** to check
+   the configuration immediately.
+
+The health endpoint returns `200 OK` without requiring an API key. Scheduled
+GitHub Actions runs can be delayed or skipped, so this is a best-effort way to
+reduce cold starts, not a guarantee of uninterrupted availability. An
+always-on Render plan is the reliable option if continuous availability is
+required.
