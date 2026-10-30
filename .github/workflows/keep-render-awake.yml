@@ -20,4 +20,4 @@ jobs:
             echo "Set the RENDER_API_URL repository variable to the deployed API base URL." >&2
             exit 1
           fi
-          curl --fail --silent --show-error --max-time 30 "${API_URL%/}/health"
+          curl --fail --silent --show-error --max-time 60 "${API_URL%/}/health"
